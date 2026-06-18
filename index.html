@@ -49,8 +49,7 @@
 
     <div class="container">
         <div class="callsign-display" id="memberDisplay">Patrol Active</div>
-        <!-- Single Button Setup -->
-        <button id="actionBtn" class="panic-btn" onclick="triggerPatrolAlert()">⚠️<br><br>SEND<br>ASSISTANCE</button>
+        <button id="actionBtn" class="panic-btn" onclick="triggerDirectPanic()">⚠️<br><br>SEND<br>ASSISTANCE</button>
     </div>
 
     <script>
@@ -58,7 +57,10 @@
         const callSign = urlParams.get('id') || "Unknown Patrol"; 
         document.getElementById('memberDisplay').innerText = `Logged: ${callSign}`;
 
-        function triggerPatrolAlert() {
+        // ⚠️ REMEMBER: Put your exact target control room phone number here
+        const targetPhone = "27821234567"; 
+
+        function triggerDirectPanic() {
             const btn = document.getElementById('actionBtn');
 
             if (!navigator.geolocation) {
@@ -70,42 +72,36 @@
             btn.innerHTML = "🔄<br><br>LOCKING GPS...";
 
             navigator.geolocation.getCurrentPosition(
-                async (position) => {
+                (position) => {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
+                    
+                    // FIXED FORMAT: maps.google.com ensures a clickable text link on mobile
                     const mapLink = `https://google.com{lat},${lon}`;
                     
                     const now = new Date();
                     const dateStr = now.toLocaleDateString('en-ZA'); 
                     const timeStr = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
 
-                    const fullMessageText = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
+                    const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
                     
-                    // NATIVE APP FLOW: Use Web Share API instead of explicit links
-                    if (navigator.share) {
-                        try {
-                            await navigator.share({
-                                text: fullMessageText
-                            });
-                            // Reset button text after successful handover
-                            btn.disabled = false;
-                            btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
-                        } catch (err) {
-                            // If they cancel out of the sharing drawer menu, reset the display
-                            btn.disabled = false;
-                            btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
-                        }
-                    } else {
-                        // Fallback option just in case a laptop browser is used
-                        window.open(`https://whatsapp.com{encodeURIComponent(fullMessageText)}`, '_blank');
+                    // encodeURIComponent transforms links safely so WhatsApp reads it as clean text string
+                    const textMessage = encodeURIComponent(rawMessage);
+                    
+                    // Direct Deep Link routing
+                    const deepLink = `whatsapp://send?phone=${targetPhone}&text=${textMessage}`;
+                    
+                    window.location.href = deepLink;
+
+                    setTimeout(() => {
                         btn.disabled = false;
                         btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
-                    }
+                    }, 2000);
                 },
                 (error) => {
                     btn.disabled = false;
                     btn.innerHTML = "⚠️<br><br>TRY AGAIN";
-                    alert("GPS fail. Ensure location settings are active.");
+                    alert("GPS Signal dropped. Check browser app position access permissions.");
                 },
                 { enableHighAccuracy: true, timeout: 8000 }
             );
