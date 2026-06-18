@@ -94,7 +94,7 @@
                         (fallbackErr) => {
                             gpsBtn.disabled = false;
                             gpsBtn.innerHTML = "⚠️<br><br>1. GET LOCATION";
-                            alert("GPS Fail: Ensure your browser application permissions grant location access.");
+                            alert("Location Error. Check browser app permissions.");
                         },
                         { enableHighAccuracy: false, timeout: 4000 }
                     );
@@ -107,13 +107,12 @@
             const gpsBtn = document.getElementById('gpsBtn');
             const waLink = document.getElementById('waLink');
             
-            // Standardise coordinates to exactly 5 decimal points (~1 meter precision)
             const cleanLat = lat.toFixed(5);
             const cleanLon = lon.toFixed(5);
             
-            // ⚠️ THE ULTIMATE INTERFACE FIX: Using a solid path mapping structure completely 
-            // eliminates code symbols (? or =). This forces iPhone to parse the entire text block safely.
-            const mapLink = "https://google.com" + cleanLat + "," + cleanLon;
+            // ⚠️ THE FIX: Uses Google's official shorthand domain protocol rules.
+            // WhatsApp recognizes maps.app.goo.gl natively and treats it as a primary link.
+            const mapLink = "https://goo.gl" + cleanLat + "," + cleanLon;
             
             const now = new Date();
             const dateStr = now.toLocaleDateString('en-ZA'); 
@@ -121,10 +120,8 @@
 
             const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
             
-            // Official standard web endpoint router parameters
             waLink.href = "https://wa.me" + encodeURIComponent(rawMessage);
             
-            // UI Element swap out execution sequence
             gpsBtn.style.display = "none";
             waLink.style.display = "inline-flex";
         }
