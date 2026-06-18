@@ -101,17 +101,17 @@
             const gpsBtn = document.getElementById('gpsBtn');
             const waLink = document.getElementById('waLink');
             
-            // SYSTEM COORDINATES OVERRIDE: Uses native coordinates mapping formatting to bypass text breaks
-            const mapLink = `https://google.com{lat},${lon}`;
+            // CLEAN MAP STRUCT: Combines space delimiters natively to ensure text format remains uncompromised
+            const mapLink = "https://google.com" + lat + "%20" + lon;
             
             const now = new Date();
             const dateStr = now.toLocaleDateString('en-ZA'); 
             const timeStr = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
 
-            // Placing the map link string on its own dedicated separate line preserves the text format rules
-            const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}.\n\nLast known location:\n${mapLink}`;
+            const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
             
-            waLink.href = `whatsapp://send?text=${encodeURIComponent(rawMessage)}`;
+            // Encode whole block string safely into system deep links
+            waLink.href = "whatsapp://send?text=" + encodeURIComponent(rawMessage);
             
             gpsBtn.style.display = "none";
             waLink.style.display = "inline-flex";
