@@ -26,27 +26,36 @@
             color: #ff4d4d;
             margin-bottom: 30px;
         }
-        /* Massive, single-tap responsive button */
-        .panic-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+        /* Step 1 Button Style */
+        .gps-btn {
             background-color: #d32f2f;
             color: white;
             border: none;
-            width: 210px;
-            height: 210px;
-            font-size: 18px;
+            width: 220px;
+            height: 220px;
+            font-size: 16px;
             font-weight: bold;
             border-radius: 50%;
             cursor: pointer;
             box-shadow: 0 0 20px rgba(211, 47, 47, 0.6);
-            text-align: center;
             line-height: 1.4;
         }
-        .panic-btn:disabled {
-            background-color: #555 !important;
-            box-shadow: none !important;
+        /* Step 2 Link Style - Massive WhatsApp Green Button */
+        .whatsapp-link {
+            display: none; /* Hidden until clipboard is safely loaded */
+            align-items: center;
+            justify-content: center;
+            background-color: #25D366;
+            color: white;
+            text-decoration: none;
+            width: 220px;
+            height: 220px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 50%;
+            box-shadow: 0 0 25px rgba(37, 211, 102, 0.8);
+            text-align: center;
+            line-height: 1.4;
         }
     </style>
 </head>
@@ -54,8 +63,12 @@
 
     <div class="container">
         <div class="callsign-display" id="memberDisplay">Patrol Active</div>
-        <!-- Back to a single seamless tap experience -->
-        <button id="actionBtn" class="panic-btn" onclick="triggerAndroidAlert()">⚠️<br><br>SEND<br>ASSISTANCE</button>
+        
+        <!-- STEP 1 BUTTON -->
+        <button id="gpsBtn" class="gps-btn" onclick="captureAndCopyLocation()">⚠️<br><br>1. LOCK GPS &<br>COPY ALERT</button>
+        
+        <!-- STEP 2 LINK -->
+        <a id="waLink" class="whatsapp-link" target="_blank" href="https://wa.me">💬<br><br>2. CHOOSE<br>WATCH GROUP<br>(THEN PASTE)</a>
     </div>
 
     <script>
@@ -63,27 +76,27 @@
         const callSign = urlParams.get('id') || "Unknown Patrol"; 
         document.getElementById('memberDisplay').innerText = `Logged: ${callSign}`;
 
-        function triggerAndroidAlert() {
-            const btn = document.getElementById('actionBtn');
+        function captureAndCopyLocation() {
+            const gpsBtn = document.getElementById('gpsBtn');
 
             if (!navigator.geolocation) {
                 alert("Error: Geolocation is unsupported.");
                 return;
             }
 
-            btn.disabled = true;
-            btn.innerHTML = "🔄<br><br>LOCKING GPS...";
+            gpsBtn.disabled = true;
+            gpsBtn.innerHTML = "🔄<br><br>LOCKING GPS...";
 
             navigator.geolocation.getCurrentPosition(
-                (pos) => { handleHandoff(pos.coords.latitude, pos.coords.longitude); },
+                (pos) => { buildAndCopyString(pos.coords.latitude, pos.coords.longitude); },
                 (err) => {
-                    // Cell-tower backup location check running within 4 seconds if satellite sync struggles
+                    // Cellular fallback loop
                     navigator.geolocation.getCurrentPosition(
-                        (fallbackPos) => { handleHandoff(fallbackPos.coords.latitude, fallbackPos.coords.longitude); },
+                        (fallbackPos) => { buildAndCopyString(fallbackPos.coords.latitude, fallbackPos.coords.longitude); },
                         (fallbackErr) => {
-                            btn.disabled = false;
-                            btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
-                            alert("GPS Fail: Ensure browser location permissions are enabled.");
+                            gpsBtn.disabled = false;
+                            gpsBtn.innerHTML = "⚠️<br><br>1. LOCK GPS &<br>COPY ALERT";
+                            alert("GPS Fail: Ensure browser app location tracking permissions are allowed.");
                         },
                         { enableHighAccuracy: false, timeout: 4000 }
                     );
@@ -92,43 +105,33 @@
             );
         }
 
-        function handleHandoff(lat, lon) {
-            const btn = document.getElementById('actionBtn');
+        function buildAndCopyString(lat, lon) {
+            const gpsBtn = document.getElementById('gpsBtn');
+            const waLink = document.getElementById('waLink');
             
-            // Decimal formatting yields ~1 meter precision and keeps text clean
             const cleanLat = lat.toFixed(5);
             const cleanLon = lon.toFixed(5);
             
-            // Standard query-less template format that Android systems recognize natively
+            // Clean standard link structure that opens cleanly inside Google Maps app
             const mapLink = "https://google.com" + cleanLat + "," + cleanLon;
             
             const now = new Date();
             const dateStr = now.toLocaleDateString('en-ZA'); 
             const timeStr = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
 
-            // Using explicit line break operators groups the text elements cleanly
-            const structuralText = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}.\n\nLast known location:\n${mapLink}`;
+            const alertTextPayload = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}.\n\nLast known location:\n${mapLink}`;
             
-            // ⚠️ THE ANDROID FIX: Triggers the phone's native Share Intent overlay.
-            // This stops web browser routing loops from crashing.
-            if (navigator.share) {
-                navigator.share({
-                    text: structuralText
-                })
-                .then(() => {
-                    btn.disabled = false;
-                    btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
-                })
-                .catch((err) => {
-                    btn.disabled = false;
-                    btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
-                });
-            } else {
-                // Fallback option using standard web routing if opened outside a mobile environment
-                window.location.replace("https://wa.me/?text=" + encodeURIComponent(structuralText));
-                btn.disabled = false;
-                btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
-            }
+            // HARDWARE LEVEL COPY: Manually forces the text block into Android's clipboard storage
+            const hiddenTextarea = document.createElement("textarea");
+            hiddenTextarea.value = alertTextPayload;
+            document.body.appendChild(hiddenTextarea);
+            hiddenTextarea.select();
+            document.execCommand("copy"); // Executed instantly to bypass Android sandboxing limits
+            document.body.removeChild(hiddenTextarea);
+
+            // Interface step transition
+            gpsBtn.style.display = "none";
+            waLink.style.display = "inline-flex";
         }
     </script>
 
