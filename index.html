@@ -26,13 +26,11 @@
             color: #ff4d4d;
             margin-bottom: 30px;
         }
-        .panic-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+        /* Step 1 Button Style */
+        .gps-btn {
             background-color: #d32f2f;
             color: white;
-            text-decoration: none;
+            border: none;
             width: 200px;
             height: 200px;
             font-size: 18px;
@@ -40,7 +38,21 @@
             border-radius: 50%;
             cursor: pointer;
             box-shadow: 0 0 20px rgba(211, 47, 47, 0.6);
-            border: none;
+        }
+        /* Step 2 Native Link Style - Completely ignores pop-up blockers */
+        .whatsapp-link {
+            display: none; /* Kept hidden until location locks */
+            align-items: center;
+            justify-content: center;
+            background-color: #25D366;
+            color: white;
+            text-decoration: none;
+            width: 200px;
+            height: 200px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 50%;
+            box-shadow: 0 0 25px rgba(37, 211, 102, 0.8);
             text-align: center;
             line-height: 1.4;
         }
@@ -50,7 +62,12 @@
 
     <div class="container">
         <div class="callsign-display" id="memberDisplay">Patrol Active</div>
-        <a href="#" id="actionBtn" class="panic-btn" onclick="triggerGroupPanic(event)">⚠️<br><br>SEND<br>ASSISTANCE</a>
+        
+        <!-- STEP 1 BUTTON: Only triggers the native browser GPS tracking -->
+        <button id="gpsBtn" class="gps-btn" onclick="captureLocationData()">⚠️<br><br>1. GET LOCATION</button>
+        
+        <!-- STEP 2 LINK: Real HTML link that phones will always allow to pass -->
+        <a id="waLink" class="whatsapp-link" href="#">💬<br><br>2. SEND TO<br>WHATSAPP</a>
     </div>
 
     <script>
@@ -58,54 +75,54 @@
         const callSign = urlParams.get('id') || "Unknown Patrol"; 
         document.getElementById('memberDisplay').innerText = `Logged: ${callSign}`;
 
-        function triggerGroupPanic(event) {
-            const btn = document.getElementById('actionBtn');
-            event.preventDefault(); 
+        function captureLocationData() {
+            const gpsBtn = document.getElementById('gpsBtn');
+            const waLink = document.getElementById('waLink');
 
             if (!navigator.geolocation) {
-                alert("Error: Geolocation is unsupported.");
+                alert("Error: Geolocation is not supported by this device.");
                 return;
             }
 
-            btn.innerHTML = "🔄<br><br>LOCKING GPS...";
-            btn.style.pointerEvents = "none";
+            gpsBtn.disabled = true;
+            gpsBtn.innerHTML = "🔄<br><br>LOCKING GPS...";
 
-            // Try to get a high-accuracy GPS lock first
+            // Dual fallback layout configuration
             navigator.geolocation.getCurrentPosition(
-                (pos) => { sendToWhatsApp(pos.coords.latitude, pos.coords.longitude); },
+                (pos) => { handleCoordinates(pos.coords.latitude, pos.coords.longitude); },
                 (err) => {
-                    // FALLBACK: If GPS fails or takes too long, try cell-tower location instantly
-                    console.log("High accuracy failed, trying fallback...");
+                    // Cellular network fallback
                     navigator.geolocation.getCurrentPosition(
-                        (fallbackPos) => { sendToWhatsApp(fallbackPos.coords.latitude, fallbackPos.coords.longitude); },
+                        (fallbackPos) => { handleCoordinates(fallbackPos.coords.latitude, fallbackPos.coords.longitude); },
                         (fallbackErr) => {
-                            btn.style.pointerEvents = "auto";
-                            btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
-                            alert("Location Error: Please check your phone settings and ensure Location/GPS is enabled for your browser app.");
+                            gpsBtn.disabled = false;
+                            gpsBtn.innerHTML = "⚠️<br><br>1. GET LOCATION";
+                            alert("Location Access Error. Please verify your smartphone and web browser app settings have active GPS positioning authorization.");
                         },
                         { enableHighAccuracy: false, timeout: 5000 }
                     );
                 },
-                { enableHighAccuracy: true, timeout: 4000 } // Give GPS 4 seconds before failing over
+                { enableHighAccuracy: true, timeout: 4000 }
             );
         }
 
-        function sendToWhatsApp(lat, lon) {
-            const btn = document.getElementById('actionBtn');
-            const mapLink = `https://google.com{lat},${lon}`;
+        function handleCoordinates(lat, lon) {
+            const gpsBtn = document.getElementById('gpsBtn');
+            const waLink = document.getElementById('waLink');
             
+            const mapLink = `https://google.com{lat},${lon}`;
             const now = new Date();
             const dateStr = now.toLocaleDateString('en-ZA'); 
             const timeStr = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
 
             const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
-            const textMessage = encodeURIComponent(rawMessage);
             
-            btn.href = `https://wa.me{textMessage}`;
-            btn.style.pointerEvents = "auto";
-            btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
+            // Build the standard text share URL structure
+            waLink.href = `https://wa.me{encodeURIComponent(rawMessage)}`;
             
-            btn.click(); // Fire the link
+            // Swap the buttons cleanly
+            gpsBtn.style.display = "none";
+            waLink.style.display = "inline-flex";
         }
     </script>
 
