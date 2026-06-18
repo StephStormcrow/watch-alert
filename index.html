@@ -26,10 +26,14 @@
             color: #ff4d4d;
             margin-bottom: 30px;
         }
-        .panic-btn {
+        /* Unified Style for Button and Native Link Trigger */
+        .panic-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             background-color: #d32f2f; /* Red initially */
             color: white;
-            border: none;
+            text-decoration: none;
             width: 200px;
             height: 200px;
             font-size: 18px;
@@ -38,14 +42,15 @@
             cursor: pointer;
             box-shadow: 0 0 20px rgba(211, 47, 47, 0.6);
             transition: all 0.3s ease;
+            text-align: center;
+            border: none;
         }
-        /* Style adjustments when ready to launch WhatsApp */
-        .panic-btn.ready {
+        /* Style adjustments when text message variables map is ready */
+        .panic-link.ready {
             background-color: #25D366 !important; /* WhatsApp Green */
             box-shadow: 0 0 25px rgba(37, 211, 102, 0.8) !important;
-            color: white !important;
         }
-        .panic-btn:disabled {
+        .panic-link:disabled {
             background-color: #555 !important;
             box-shadow: none !important;
             cursor: not-allowed;
@@ -56,8 +61,8 @@
 
     <div class="container">
         <div class="callsign-display" id="memberDisplay">Patrol Active</div>
-        <!-- Unified state machine button -->
-        <button class="panic-btn" id="actionBtn" onclick="handleButtonClick()">⚠️<br><br>1. GET LOCATION</button>
+        <!-- Standard Native Link Tag completely eliminates browser pop-up blocking -->
+        <a href="#" id="actionBtn" class="panic-link" onclick="handleButtonClick(event)">⚠️<br><br>1. GET LOCATION</a>
     </div>
 
     <script>
@@ -65,21 +70,22 @@
         const callSign = urlParams.get('id') || "Unknown Patrol"; 
         document.getElementById('memberDisplay').innerText = `Logged: ${callSign}`;
 
-        // Track internal state shifts
         let currentStatus = "idle"; 
-        let generatedWhatsappUrl = "";
 
-        function handleButtonClick() {
+        function handleButtonClick(event) {
             const btn = document.getElementById('actionBtn');
 
-            // STATE 1: Initial Click - Fetch the GPS variables
+            // STEP 1: Process Local GPS Data
             if (currentStatus === "idle") {
+                // Prevent the link from navigating away while grabbing coordinates
+                event.preventDefault(); 
+
                 if (!navigator.geolocation) {
                     alert("Error: Geolocation is disabled or unsupported.");
                     return;
                 }
 
-                btn.disabled = true;
+                btn.style.pointerEvents = "none"; // Temporarily freeze click spamming
                 btn.innerHTML = "🔄<br><br>LOCKING GPS...";
 
                 navigator.geolocation.getCurrentPosition(
@@ -95,17 +101,17 @@
                         const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
                         const textMessage = encodeURIComponent(rawMessage);
                         
-                        // Save the text parameters locally
-                        generatedWhatsappUrl = `https://wa.me{textMessage}`;
+                        // Overwrite the actual underlying anchor link address natively
+                        btn.href = `https://whatsapp.com{textMessage}`;
                         
-                        // Progress state immediately to Step 2
+                        // Transition layout cleanly to step 2
                         currentStatus = "ready";
-                        btn.disabled = false;
+                        btn.style.pointerEvents = "auto"; // Re-enable click execution
                         btn.classList.add('ready');
                         btn.innerHTML = "💬<br><br>2. SEND TO<br>WHATSAPP";
                     },
                     (error) => {
-                        btn.disabled = false;
+                        btn.style.pointerEvents = "auto";
                         btn.innerHTML = "⚠️<br><br>TRY AGAIN";
                         if (error.code === error.PERMISSION_DENIED) {
                             alert("Please allow location access permissions.");
@@ -116,16 +122,17 @@
                     { enableHighAccuracy: true, timeout: 7000 }
                 );
             } 
-            // STATE 2: Location locked - Fire the secure link directly 
-            else if (currentStatus === "ready" && generatedWhatsappUrl !== "") {
-                window.open(generatedWhatsappUrl, '_blank');
+            // STEP 2: The browser allows this click event instantly since it maps to a direct URL update
+            else if (currentStatus === "ready") {
+                // Let the browser naturally open the updated href link properties
                 
-                // Reset button state slightly delayed after app handoff 
+                // Optional: Reset button back to starting position after a short delay
                 setTimeout(() => {
                     currentStatus = "idle";
+                    btn.href = "#";
                     btn.classList.remove('ready');
                     btn.innerHTML = "⚠️<br><br>1. GET LOCATION";
-                }, 2000);
+                }, 4000);
             }
         }
     </script>
