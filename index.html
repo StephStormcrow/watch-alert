@@ -26,23 +26,12 @@
             color: #ff4d4d;
             margin-bottom: 30px;
         }
-        .gps-btn {
-            background-color: #d32f2f;
-            color: white;
-            border: none;
-            width: 200px;
-            height: 200px;
-            font-size: 18px;
-            font-weight: bold;
-            border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 0 20px rgba(211, 47, 47, 0.6);
-        }
-        .whatsapp-link {
-            display: none;
+        /* Massive, single-tap responsive layout element */
+        .panic-btn {
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            background-color: #25D366;
+            background-color: #d32f2f;
             color: white;
             text-decoration: none;
             width: 200px;
@@ -50,9 +39,14 @@
             font-size: 18px;
             font-weight: bold;
             border-radius: 50%;
-            box-shadow: 0 0 25px rgba(37, 211, 102, 0.8);
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(211, 47, 47, 0.6);
+            border: none;
             text-align: center;
             line-height: 1.4;
+        }
+        .panic-btn:active {
+            background-color: #9a0007;
         }
     </style>
 </head>
@@ -60,8 +54,8 @@
 
     <div class="container">
         <div class="callsign-display" id="memberDisplay">Patrol Active</div>
-        <button id="gpsBtn" class="gps-btn" onclick="captureLocationData()">⚠️<br><br>1. GET LOCATION</button>
-        <a id="waLink" class="whatsapp-link" href="#">💬<br><br>2. SEND TO<br>WHATSAPP</a>
+        <!-- Native link element handles the entire sequence in 1 tap -->
+        <a href="#" id="actionBtn" class="panic-btn" onclick="triggerGroupPanic(event)">⚠️<br><br>SEND<br>ASSISTANCE</a>
     </div>
 
     <script>
@@ -69,56 +63,52 @@
         const callSign = urlParams.get('id') || "Unknown Patrol"; 
         document.getElementById('memberDisplay').innerText = `Logged: ${callSign}`;
 
-        function captureLocationData() {
-            const gpsBtn = document.getElementById('gpsBtn');
+        function triggerGroupPanic(event) {
+            const btn = document.getElementById('actionBtn');
+            
+            // Freeze navigation while browser queries device GPS chips
+            event.preventDefault(); 
 
             if (!navigator.geolocation) {
                 alert("Error: Geolocation is unsupported.");
                 return;
             }
 
-            gpsBtn.disabled = true;
-            gpsBtn.innerHTML = "🔄<br><br>LOCKING GPS...";
+            btn.innerHTML = "🔄<br><br>LOCKING GPS...";
+            btn.style.pointerEvents = "none"; 
 
             navigator.geolocation.getCurrentPosition(
-                (pos) => { handleCoordinates(pos.coords.latitude, pos.coords.longitude); },
-                (err) => {
-                    navigator.geolocation.getCurrentPosition(
-                        (fallbackPos) => { handleCoordinates(fallbackPos.coords.latitude, fallbackPos.coords.longitude); },
-                        (fallbackErr) => {
-                            gpsBtn.disabled = false;
-                            gpsBtn.innerHTML = "⚠️<br><br>1. GET LOCATION";
-                            alert("Location Access Error. Please check permissions.");
-                        },
-                        { enableHighAccuracy: false, timeout: 5000 }
-                    );
+                (position) => {
+                    // Standardize coordinate structures to 5 decimal points (~1 meter precision)
+                    const lat = position.coords.latitude.toFixed(5);
+                    const lon = position.coords.longitude.toFixed(5);
+                    
+                    // UNIVERSAL FORMAT: Guarantees clickable parsing on iOS and Android
+                    const mapLink = "https://google.com" + lat + "," + lon;
+                    
+                    const now = new Date();
+                    const dateStr = now.toLocaleDateString('en-ZA'); 
+                    const timeStr = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+
+                    const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
+                    
+                    // Update target destination to the official web endpoint router
+                    btn.href = "https://wa.me/?text=" + encodeURIComponent(rawMessage);
+                    
+                    // Reset interface click parameters and execute the tap handoff natively
+                    btn.style.pointerEvents = "auto";
+                    btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
+                    
+                    // Forces the browser to naturally switch tasks and pop open WhatsApp group choice list
+                    btn.click(); 
                 },
-                { enableHighAccuracy: true, timeout: 4000 }
+                (error) => {
+                    btn.style.pointerEvents = "auto";
+                    btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
+                    alert("GPS fail. Ensure location settings are active for your browser app.");
+                },
+                { enableHighAccuracy: true, timeout: 7000 }
             );
-        }
-
-        function handleCoordinates(lat, lon) {
-            const gpsBtn = document.getElementById('gpsBtn');
-            const waLink = document.getElementById('waLink');
-            
-            const cleanLat = lat.toFixed(5);
-            const cleanLon = lon.toFixed(5);
-            
-            // FIXED NATIVE DEEP LINK: "comgooglemaps://" triggers the smartphone OS layers directly 
-            // It completely bypasses WhatsApp's link-blocking security filters.
-            const mapLink = "comgooglemaps://?q=" + cleanLat + "," + cleanLon;
-            
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('en-ZA'); 
-            const timeStr = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
-
-            // Placing the mapLink right at the front triggers the smartphone system link reader
-            const rawMessage = `${mapLink}\n\nAssistance required for ${callSign} on ${dateStr} at ${timeStr}.`;
-            
-            waLink.href = "whatsapp://send?text=" + encodeURIComponent(rawMessage);
-            
-            gpsBtn.style.display = "none";
-            waLink.style.display = "inline-flex";
         }
     </script>
 
