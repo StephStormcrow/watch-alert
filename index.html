@@ -26,13 +26,14 @@
             color: #ff4d4d;
             margin-bottom: 30px;
         }
+        /* Single tactical panic button layout geometry */
         .panic-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
             background-color: #d32f2f;
             color: white;
-            text-decoration: none;
+            border: none;
             width: 200px;
             height: 200px;
             font-size: 18px;
@@ -40,25 +41,13 @@
             border-radius: 50%;
             cursor: pointer;
             box-shadow: 0 0 20px rgba(211, 47, 47, 0.6);
-            border: none;
             text-align: center;
             line-height: 1.4;
         }
-        .whatsapp-link {
-            display: none;
-            align-items: center;
-            justify-content: center;
-            background-color: #25D366;
-            color: white;
-            text-decoration: none;
-            width: 200px;
-            height: 200px;
-            font-size: 18px;
-            font-weight: bold;
-            border-radius: 50%;
-            box-shadow: 0 0 25px rgba(37, 211, 102, 0.8);
-            text-align: center;
-            line-height: 1.4;
+        .panic-btn:disabled {
+            background-color: #555 !important;
+            box-shadow: none !important;
+            cursor: not-allowed;
         }
     </style>
 </head>
@@ -66,8 +55,8 @@
 
     <div class="container">
         <div class="callsign-display" id="memberDisplay">Patrol Active</div>
-        <button id="gpsBtn" class="panic-btn" onclick="captureLocationData()">⚠️<br><br>1. GET LOCATION</button>
-        <a id="waLink" class="whatsapp-link" href="#">💬<br><br>2. SEND TO<br>WHATSAPP</a>
+        <!-- Single unified seamless interaction point -->
+        <button id="actionBtn" class="panic-btn" onclick="triggerPatrolPanic()">⚠️<br><br>SEND<br>ASSISTANCE</button>
     </div>
 
     <script>
@@ -75,26 +64,28 @@
         const callSign = urlParams.get('id') || "Unknown Patrol"; 
         document.getElementById('memberDisplay').innerText = `Logged: ${callSign}`;
 
-        function captureLocationData() {
-            const gpsBtn = document.getElementById('gpsBtn');
+        function triggerPatrolPanic() {
+            const btn = document.getElementById('actionBtn');
 
             if (!navigator.geolocation) {
                 alert("Error: Geolocation is unsupported.");
                 return;
             }
 
-            gpsBtn.disabled = true;
-            gpsBtn.innerHTML = "🔄<br><br>LOCKING GPS...";
+            btn.disabled = true;
+            btn.innerHTML = "🔄<br><br>LOCKING GPS...";
 
+            // Dual validation layer captures coordinates swiftly
             navigator.geolocation.getCurrentPosition(
-                (pos) => { handleCoordinates(pos.coords.latitude, pos.coords.longitude); },
+                (pos) => { executeHandoff(pos.coords.latitude, pos.coords.longitude); },
                 (err) => {
+                    // Cellular location service backup kicks in automatically within 4 seconds
                     navigator.geolocation.getCurrentPosition(
-                        (fallbackPos) => { handleCoordinates(fallbackPos.coords.latitude, fallbackPos.coords.longitude); },
+                        (fallbackPos) => { executeHandoff(fallbackPos.coords.latitude, fallbackPos.coords.longitude); },
                         (fallbackErr) => {
-                            gpsBtn.disabled = false;
-                            gpsBtn.innerHTML = "⚠️<br><br>1. GET LOCATION";
-                            alert("Location Error. Check browser app permissions.");
+                            btn.disabled = false;
+                            btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
+                            alert("Location Error: Verify browser app settings have active GPS tracking permissions.");
                         },
                         { enableHighAccuracy: false, timeout: 4000 }
                     );
@@ -103,16 +94,15 @@
             );
         }
 
-        function handleCoordinates(lat, lon) {
-            const gpsBtn = document.getElementById('gpsBtn');
-            const waLink = document.getElementById('waLink');
+        function executeHandoff(lat, lon) {
+            const btn = document.getElementById('actionBtn');
             
+            // Format parameters cleanly using decimals to prevent iPhone security blocks
             const cleanLat = lat.toFixed(5);
             const cleanLon = lon.toFixed(5);
             
-            // ⚠️ THE FIX: Uses Google's official shorthand domain protocol rules.
-            // WhatsApp recognizes maps.app.goo.gl natively and treats it as a primary link.
-            const mapLink = "https://goo.gl" + cleanLat + "," + cleanLon;
+            // Solid, query-less path layout guarantees active clickable blue links in chat strings
+            const mapLink = "https://google.com" + cleanLat + "," + cleanLon;
             
             const now = new Date();
             const dateStr = now.toLocaleDateString('en-ZA'); 
@@ -120,10 +110,19 @@
 
             const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
             
-            waLink.href = "https://wa.me" + encodeURIComponent(rawMessage);
+            // Directly launch the native system layout link
+            const targetUrl = "whatsapp://send?text=" + encodeURIComponent(rawMessage);
             
-            gpsBtn.style.display = "none";
-            waLink.style.display = "inline-flex";
+            // CRITICAL SYSTEM REPAIR: window.location.replace forces the current browser container 
+            // to instantly drop task execution and hand over control to WhatsApp natively.
+            // This stops blank tabs from spawning or freezing entirely.
+            window.location.replace(targetUrl);
+
+            // Reset the interface fallback shortly after task handoff runs
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
+            }, 3000);
         }
     </script>
 
