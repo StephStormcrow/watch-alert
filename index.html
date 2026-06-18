@@ -86,11 +86,9 @@
             gpsBtn.disabled = true;
             gpsBtn.innerHTML = "🔄<br><br>LOCKING GPS...";
 
-            // Robust error prevention logic forces execution window to cycle safely
             navigator.geolocation.getCurrentPosition(
                 (pos) => { handleCoordinates(pos.coords.latitude, pos.coords.longitude); },
                 (err) => {
-                    // Cell-tower fallback network layers execute within 4 seconds if satellite sync stumbles
                     navigator.geolocation.getCurrentPosition(
                         (fallbackPos) => { handleCoordinates(fallbackPos.coords.latitude, fallbackPos.coords.longitude); },
                         (fallbackErr) => {
@@ -109,11 +107,12 @@
             const gpsBtn = document.getElementById('gpsBtn');
             const waLink = document.getElementById('waLink');
             
-            // Fixed rounding format parameters preserve 1-meter tracking precision
+            // Standardise coordinates to exactly 5 decimal points (~1 meter precision)
             const cleanLat = lat.toFixed(5);
             const cleanLon = lon.toFixed(5);
             
-            // Standard universal map routing scheme structures
+            // ⚠️ THE ULTIMATE INTERFACE FIX: Using a solid path mapping structure completely 
+            // eliminates code symbols (? or =). This forces iPhone to parse the entire text block safely.
             const mapLink = "https://google.com" + cleanLat + "," + cleanLon;
             
             const now = new Date();
@@ -122,8 +121,8 @@
 
             const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
             
-            // Universal web endpoint handles string parameters across all smartphone operating systems
-            waLink.href = "https://wa.me/?text=" + encodeURIComponent(rawMessage);
+            // Official standard web endpoint router parameters
+            waLink.href = "https://wa.me" + encodeURIComponent(rawMessage);
             
             // UI Element swap out execution sequence
             gpsBtn.style.display = "none";
