@@ -44,8 +44,21 @@
             text-align: center;
             line-height: 1.4;
         }
-        .panic-btn:active {
-            background-color: #9a0007;
+        .whatsapp-link {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background-color: #25D366;
+            color: white;
+            text-decoration: none;
+            width: 200px;
+            height: 200px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 50%;
+            box-shadow: 0 0 25px rgba(37, 211, 102, 0.8);
+            text-align: center;
+            line-height: 1.4;
         }
     </style>
 </head>
@@ -53,7 +66,8 @@
 
     <div class="container">
         <div class="callsign-display" id="memberDisplay">Patrol Active</div>
-        <a href="#" id="actionBtn" class="panic-btn" onclick="triggerGroupPanic(event)">⚠️<br><br>SEND<br>ASSISTANCE</a>
+        <button id="gpsBtn" class="panic-btn" onclick="captureLocationData()">⚠️<br><br>1. GET LOCATION</button>
+        <a id="waLink" class="whatsapp-link" href="#">💬<br><br>2. SEND TO<br>WHATSAPP</a>
     </div>
 
     <script>
@@ -61,48 +75,59 @@
         const callSign = urlParams.get('id') || "Unknown Patrol"; 
         document.getElementById('memberDisplay').innerText = `Logged: ${callSign}`;
 
-        function triggerGroupPanic(event) {
-            const btn = document.getElementById('actionBtn');
-            event.preventDefault(); 
+        function captureLocationData() {
+            const gpsBtn = document.getElementById('gpsBtn');
 
             if (!navigator.geolocation) {
                 alert("Error: Geolocation is unsupported.");
                 return;
             }
 
-            btn.innerHTML = "🔄<br><br>LOCKING GPS...";
-            btn.style.pointerEvents = "none"; 
+            gpsBtn.disabled = true;
+            gpsBtn.innerHTML = "🔄<br><br>LOCKING GPS...";
 
+            // Robust error prevention logic forces execution window to cycle safely
             navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude.toFixed(5);
-                    const lon = position.coords.longitude.toFixed(5);
-                    
-                    // ⚠️ THE FIX: Strips out https://, slashes, questions marks, and commas. 
-                    // Separating via spaces prevents the phone OS filtering blocks.
-                    const mapLink = "maps.google.com/ " + lat + " " + lon;
-                    
-                    const now = new Date();
-                    const dateStr = now.toLocaleDateString('en-ZA'); 
-                    const timeStr = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
-
-                    const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
-                    
-                    // Official standard web endpoint router parameters
-                    btn.href = "https://wa.me/?text=" + encodeURIComponent(rawMessage);
-                    
-                    btn.style.pointerEvents = "auto";
-                    btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
-                    
-                    btn.click(); 
+                (pos) => { handleCoordinates(pos.coords.latitude, pos.coords.longitude); },
+                (err) => {
+                    // Cell-tower fallback network layers execute within 4 seconds if satellite sync stumbles
+                    navigator.geolocation.getCurrentPosition(
+                        (fallbackPos) => { handleCoordinates(fallbackPos.coords.latitude, fallbackPos.coords.longitude); },
+                        (fallbackErr) => {
+                            gpsBtn.disabled = false;
+                            gpsBtn.innerHTML = "⚠️<br><br>1. GET LOCATION";
+                            alert("GPS Fail: Ensure your browser application permissions grant location access.");
+                        },
+                        { enableHighAccuracy: false, timeout: 4000 }
+                    );
                 },
-                (error) => {
-                    btn.style.pointerEvents = "auto";
-                    btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
-                    alert("GPS fail. Ensure location settings are active for your browser app.");
-                },
-                { enableHighAccuracy: true, timeout: 7000 }
+                { enableHighAccuracy: true, timeout: 4000 }
             );
+        }
+
+        function handleCoordinates(lat, lon) {
+            const gpsBtn = document.getElementById('gpsBtn');
+            const waLink = document.getElementById('waLink');
+            
+            // Fixed rounding format parameters preserve 1-meter tracking precision
+            const cleanLat = lat.toFixed(5);
+            const cleanLon = lon.toFixed(5);
+            
+            // Standard universal map routing scheme structures
+            const mapLink = "https://google.com" + cleanLat + "," + cleanLon;
+            
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-ZA'); 
+            const timeStr = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+
+            const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
+            
+            // Universal web endpoint handles string parameters across all smartphone operating systems
+            waLink.href = "https://wa.me/?text=" + encodeURIComponent(rawMessage);
+            
+            // UI Element swap out execution sequence
+            gpsBtn.style.display = "none";
+            waLink.style.display = "inline-flex";
         }
     </script>
 
