@@ -26,10 +26,14 @@
             color: #ff4d4d;
             margin-bottom: 30px;
         }
+        /* Stylized link that looks and acts like a massive panic button */
         .panic-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             background-color: #d32f2f;
             color: white;
-            border: none;
+            text-decoration: none;
             width: 200px;
             height: 200px;
             font-size: 18px;
@@ -37,11 +41,12 @@
             border-radius: 50%;
             cursor: pointer;
             box-shadow: 0 0 20px rgba(211, 47, 47, 0.6);
+            border: none;
+            text-align: center;
+            line-height: 1.4;
         }
-        .panic-btn:disabled {
-            background-color: #555 !important;
-            box-shadow: none !important;
-            cursor: not-allowed;
+        .panic-btn:active {
+            background-color: #9a0007;
         }
     </style>
 </head>
@@ -49,7 +54,8 @@
 
     <div class="container">
         <div class="callsign-display" id="memberDisplay">Patrol Active</div>
-        <button id="actionBtn" class="panic-btn" onclick="triggerDirectPanic()">⚠️<br><br>SEND<br>ASSISTANCE</button>
+        <!-- Single native web link element -->
+        <a href="#" id="actionBtn" class="panic-btn" onclick="triggerGroupPanic(event)">⚠️<br><br>SEND<br>ASSISTANCE</a>
     </div>
 
     <script>
@@ -57,26 +63,26 @@
         const callSign = urlParams.get('id') || "Unknown Patrol"; 
         document.getElementById('memberDisplay').innerText = `Logged: ${callSign}`;
 
-        // ⚠️ REMEMBER: Put your exact target control room phone number here
-        const targetPhone = "27821234567"; 
-
-        function triggerDirectPanic() {
+        function triggerGroupPanic(event) {
             const btn = document.getElementById('actionBtn');
+            
+            // 1. Stop the link from firing until we have the GPS coordinates
+            event.preventDefault(); 
 
             if (!navigator.geolocation) {
                 alert("Error: Geolocation is disabled or unsupported.");
                 return;
             }
 
-            btn.disabled = true;
             btn.innerHTML = "🔄<br><br>LOCKING GPS...";
+            btn.style.pointerEvents = "none"; // Stop double-clicking
 
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
                     
-                    // FIXED FORMAT: maps.google.com ensures a clickable text link on mobile
+                    // Universal map link format
                     const mapLink = `https://google.com{lat},${lon}`;
                     
                     const now = new Date();
@@ -84,24 +90,22 @@
                     const timeStr = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
 
                     const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
-                    
-                    // encodeURIComponent transforms links safely so WhatsApp reads it as clean text string
                     const textMessage = encodeURIComponent(rawMessage);
                     
-                    // Direct Deep Link routing
-                    const deepLink = `whatsapp://send?phone=${targetPhone}&text=${textMessage}`;
+                    // 2. Set the destination to the official text-only sharing URL
+                    btn.href = `https://wa.me{textMessage}`;
                     
-                    window.location.href = deepLink;
-
-                    setTimeout(() => {
-                        btn.disabled = false;
-                        btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
-                    }, 2000);
+                    // 3. Re-enable clicking and immediately force a native click event
+                    btn.style.pointerEvents = "auto";
+                    btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
+                    
+                    // This forces the browser to open the newly created link naturally
+                    btn.click(); 
                 },
                 (error) => {
-                    btn.disabled = false;
-                    btn.innerHTML = "⚠️<br><br>TRY AGAIN";
-                    alert("GPS Signal dropped. Check browser app position access permissions.");
+                    btn.style.pointerEvents = "auto";
+                    btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
+                    alert("GPS Signal failed. Please ensure location services are enabled on your device.");
                 },
                 { enableHighAccuracy: true, timeout: 8000 }
             );
