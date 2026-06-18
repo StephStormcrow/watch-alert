@@ -26,7 +26,6 @@
             color: #ff4d4d;
             margin-bottom: 30px;
         }
-        /* Single tactical panic button layout geometry */
         .panic-btn {
             display: inline-flex;
             align-items: center;
@@ -55,7 +54,6 @@
 
     <div class="container">
         <div class="callsign-display" id="memberDisplay">Patrol Active</div>
-        <!-- Single unified seamless interaction point -->
         <button id="actionBtn" class="panic-btn" onclick="triggerPatrolPanic()">⚠️<br><br>SEND<br>ASSISTANCE</button>
     </div>
 
@@ -75,17 +73,15 @@
             btn.disabled = true;
             btn.innerHTML = "🔄<br><br>LOCKING GPS...";
 
-            // Dual validation layer captures coordinates swiftly
             navigator.geolocation.getCurrentPosition(
                 (pos) => { executeHandoff(pos.coords.latitude, pos.coords.longitude); },
                 (err) => {
-                    // Cellular location service backup kicks in automatically within 4 seconds
                     navigator.geolocation.getCurrentPosition(
                         (fallbackPos) => { executeHandoff(fallbackPos.coords.latitude, fallbackPos.coords.longitude); },
                         (fallbackErr) => {
                             btn.disabled = false;
                             btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
-                            alert("Location Error: Verify browser app settings have active GPS tracking permissions.");
+                            alert("Location Error: Verify browser permissions.");
                         },
                         { enableHighAccuracy: false, timeout: 4000 }
                     );
@@ -97,28 +93,25 @@
         function executeHandoff(lat, lon) {
             const btn = document.getElementById('actionBtn');
             
-            // Format parameters cleanly using decimals to prevent iPhone security blocks
+            // Standardizes values to 5 decimal spaces to stay within iOS character safety parameters
             const cleanLat = lat.toFixed(5);
             const cleanLon = lon.toFixed(5);
             
-            // Solid, query-less path layout guarantees active clickable blue links in chat strings
-            const mapLink = "https://google.com" + cleanLat + "," + cleanLon;
+            // NATIVE LAYOUT OVERRIDE: Placing ://google.com on its own independent line 
+            // keeps characters intact without formatting breakage inside WhatsApp on iPhones.
+            const mapLink = "https://://google.com" + cleanLat + "," + cleanLon;
             
             const now = new Date();
             const dateStr = now.toLocaleDateString('en-ZA'); 
             const timeStr = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
 
-            const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
+            // Placing the map URL on its own line isolated from surrounding words is key
+            const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}.\n\nLast known location:\n${mapLink}`;
             
-            // Directly launch the native system layout link
-            const targetUrl = "whatsapp://send?text=" + encodeURIComponent(rawMessage);
+            const targetUrl = "https://wa.me/?text=" + encodeURIComponent(rawMessage);
             
-            // CRITICAL SYSTEM REPAIR: window.location.replace forces the current browser container 
-            // to instantly drop task execution and hand over control to WhatsApp natively.
-            // This stops blank tabs from spawning or freezing entirely.
             window.location.replace(targetUrl);
 
-            // Reset the interface fallback shortly after task handoff runs
             setTimeout(() => {
                 btn.disabled = false;
                 btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
