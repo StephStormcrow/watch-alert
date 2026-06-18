@@ -33,9 +33,9 @@
             background-color: #d32f2f;
             color: white;
             border: none;
-            width: 200px;
-            height: 200px;
-            font-size: 18px;
+            width: 210px;
+            height: 210px;
+            font-size: 16px;
             font-weight: bold;
             border-radius: 50%;
             cursor: pointer;
@@ -46,7 +46,16 @@
         .panic-btn:disabled {
             background-color: #555 !important;
             box-shadow: none !important;
-            cursor: not-allowed;
+        }
+        .toast-msg {
+            display: none;
+            margin-top: 20px;
+            background-color: #333;
+            color: #25D366;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 14px;
         }
     </style>
 </head>
@@ -54,7 +63,8 @@
 
     <div class="container">
         <div class="callsign-display" id="memberDisplay">Patrol Active</div>
-        <button id="actionBtn" class="panic-btn" onclick="triggerPatrolPanic()">⚠️<br><br>SEND<br>ASSISTANCE</button>
+        <button id="actionBtn" class="panic-btn" onclick="triggerPatrolPanic()">⚠️<br><br>TAP TO RUN<br>EMERGENCY ALERT</button>
+        <div id="toast" class="toast-msg">📋 LINK COPIED! OPENING WHATSAPP...</div>
     </div>
 
     <script>
@@ -74,14 +84,14 @@
             btn.innerHTML = "🔄<br><br>LOCKING GPS...";
 
             navigator.geolocation.getCurrentPosition(
-                (pos) => { executeHandoff(pos.coords.latitude, pos.coords.longitude); },
+                (pos) => { copyAndRedirect(pos.coords.latitude, pos.coords.longitude); },
                 (err) => {
                     navigator.geolocation.getCurrentPosition(
-                        (fallbackPos) => { executeHandoff(fallbackPos.coords.latitude, fallbackPos.coords.longitude); },
+                        (fallbackPos) => { copyAndRedirect(fallbackPos.coords.latitude, fallbackPos.coords.longitude); },
                         (fallbackErr) => {
                             btn.disabled = false;
-                            btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
-                            alert("Location Error: Verify browser permissions.");
+                            btn.innerHTML = "⚠️<br><br>TAP TO RUN<br>EMERGENCY ALERT";
+                            alert("Location Error: Please ensure browser app location tracking permissions are allowed.");
                         },
                         { enableHighAccuracy: false, timeout: 4000 }
                     );
@@ -90,32 +100,47 @@
             );
         }
 
-        function executeHandoff(lat, lon) {
+        function copyAndRedirect(lat, lon) {
             const btn = document.getElementById('actionBtn');
+            const toast = document.getElementById('toast');
             
-            // Standardizes values to 5 decimal spaces to stay within iOS character safety parameters
             const cleanLat = lat.toFixed(5);
             const cleanLon = lon.toFixed(5);
             
-            // NATIVE LAYOUT OVERRIDE: Placing ://google.com on its own independent line 
-            // keeps characters intact without formatting breakage inside WhatsApp on iPhones.
-            const mapLink = "https://://google.com" + cleanLat + "," + cleanLon;
+            // This maps out standard clean query logic that WhatsApp loves to link
+            const mapLink = "https://google.com" + cleanLat + "," + cleanLon;
             
             const now = new Date();
             const dateStr = now.toLocaleDateString('en-ZA'); 
             const timeStr = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
 
-            // Placing the map URL on its own line isolated from surrounding words is key
-            const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}.\n\nLast known location:\n${mapLink}`;
+            const structuralMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
             
-            const targetUrl = "https://wa.me/?text=" + encodeURIComponent(rawMessage);
-            
-            window.location.replace(targetUrl);
+            // NATIVE MEMORY INJECTION: Copies text directly into the phone's internal clipboard
+            // This safely bypasses browser script limitations
+            const tempInput = document.createElement("textarea");
+            tempInput.value = structuralMessage;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            tempInput.setSelectionRange(0, 99999); // Safe verification check for mobile architectures
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
 
+            // Trigger visual feedback notice
+            toast.style.display = "block";
+            btn.innerHTML = "✅<br><br>READY TO PASTE";
+
+            // Fire native platform deep-link to trigger choice directory array directly
+            setTimeout(() => {
+                window.location.href = "whatsapp://";
+            }, 800);
+
+            // Re-set system button status indicators
             setTimeout(() => {
                 btn.disabled = false;
-                btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
-            }, 3000);
+                toast.style.display = "none";
+                btn.innerHTML = "⚠️<br><br>TAP TO RUN<br>EMERGENCY ALERT";
+            }, 4000);
         }
     </script>
 
