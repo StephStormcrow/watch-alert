@@ -26,7 +26,6 @@
             color: #ff4d4d;
             margin-bottom: 30px;
         }
-        /* Massive, single-tap responsive layout element */
         .panic-btn {
             display: inline-flex;
             align-items: center;
@@ -54,7 +53,6 @@
 
     <div class="container">
         <div class="callsign-display" id="memberDisplay">Patrol Active</div>
-        <!-- Native link element handles the entire sequence in 1 tap -->
         <a href="#" id="actionBtn" class="panic-btn" onclick="triggerGroupPanic(event)">⚠️<br><br>SEND<br>ASSISTANCE</a>
     </div>
 
@@ -65,8 +63,6 @@
 
         function triggerGroupPanic(event) {
             const btn = document.getElementById('actionBtn');
-            
-            // Freeze navigation while browser queries device GPS chips
             event.preventDefault(); 
 
             if (!navigator.geolocation) {
@@ -79,12 +75,12 @@
 
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    // Standardize coordinate structures to 5 decimal points (~1 meter precision)
                     const lat = position.coords.latitude.toFixed(5);
                     const lon = position.coords.longitude.toFixed(5);
                     
-                    // UNIVERSAL FORMAT: Guarantees clickable parsing on iOS and Android
-                    const mapLink = "https://google.com" + lat + "," + lon;
+                    // ⚠️ THE FIX: Strips out https://, slashes, questions marks, and commas. 
+                    // Separating via spaces prevents the phone OS filtering blocks.
+                    const mapLink = "maps.google.com/ " + lat + " " + lon;
                     
                     const now = new Date();
                     const dateStr = now.toLocaleDateString('en-ZA'); 
@@ -92,14 +88,12 @@
 
                     const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
                     
-                    // Update target destination to the official web endpoint router
+                    // Official standard web endpoint router parameters
                     btn.href = "https://wa.me/?text=" + encodeURIComponent(rawMessage);
                     
-                    // Reset interface click parameters and execute the tap handoff natively
                     btn.style.pointerEvents = "auto";
                     btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
                     
-                    // Forces the browser to naturally switch tasks and pop open WhatsApp group choice list
                     btn.click(); 
                 },
                 (error) => {
