@@ -101,8 +101,13 @@
             const gpsBtn = document.getElementById('gpsBtn');
             const waLink = document.getElementById('waLink');
             
-            // CLEAN MAP STRUCT: Combines space delimiters natively to ensure text format remains uncompromised
-            const mapLink = "https://google.com" + lat + "%20" + lon;
+            // CRITICAL REPAIR: explicitly forces coordinates to exactly 5 decimals
+            // This yields ~1 meter accuracy and stops string formatting crashes inside WhatsApp
+            const cleanLat = lat.toFixed(5);
+            const cleanLon = lon.toFixed(5);
+            
+            // Clean, query-less text structure link mapping
+            const mapLink = "https://google.com" + cleanLat + "," + cleanLon;
             
             const now = new Date();
             const dateStr = now.toLocaleDateString('en-ZA'); 
@@ -110,7 +115,7 @@
 
             const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
             
-            // Encode whole block string safely into system deep links
+            // Build system-compliant string
             waLink.href = "whatsapp://send?text=" + encodeURIComponent(rawMessage);
             
             gpsBtn.style.display = "none";
