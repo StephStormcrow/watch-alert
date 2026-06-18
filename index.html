@@ -26,7 +26,6 @@
             color: #ff4d4d;
             margin-bottom: 30px;
         }
-        /* Step 1 Button Style */
         .gps-btn {
             background-color: #d32f2f;
             color: white;
@@ -39,9 +38,8 @@
             cursor: pointer;
             box-shadow: 0 0 20px rgba(211, 47, 47, 0.6);
         }
-        /* Step 2 Link Style */
         .whatsapp-link {
-            display: none; /* Kept hidden until location locks */
+            display: none;
             align-items: center;
             justify-content: center;
             background-color: #25D366;
@@ -62,11 +60,7 @@
 
     <div class="container">
         <div class="callsign-display" id="memberDisplay">Patrol Active</div>
-        
-        <!-- STEP 1 BUTTON: Grabs the phone GPS tracking data variables -->
         <button id="gpsBtn" class="gps-btn" onclick="captureLocationData()">⚠️<br><br>1. GET LOCATION</button>
-        
-        <!-- STEP 2 LINK: Uses native system schema to instantly bypass web crashes -->
         <a id="waLink" class="whatsapp-link" href="#">💬<br><br>2. SEND TO<br>WHATSAPP</a>
     </div>
 
@@ -79,24 +73,22 @@
             const gpsBtn = document.getElementById('gpsBtn');
 
             if (!navigator.geolocation) {
-                alert("Error: Geolocation is not supported by this device.");
+                alert("Error: Geolocation is unsupported.");
                 return;
             }
 
             gpsBtn.disabled = true;
             gpsBtn.innerHTML = "🔄<br><br>LOCKING GPS...";
 
-            // Check dual accuracy layers
             navigator.geolocation.getCurrentPosition(
                 (pos) => { handleCoordinates(pos.coords.latitude, pos.coords.longitude); },
                 (err) => {
-                    // Cell tower fallback backup
                     navigator.geolocation.getCurrentPosition(
                         (fallbackPos) => { handleCoordinates(fallbackPos.coords.latitude, fallbackPos.coords.longitude); },
                         (fallbackErr) => {
                             gpsBtn.disabled = false;
                             gpsBtn.innerHTML = "⚠️<br><br>1. GET LOCATION";
-                            alert("Location Access Error. Please verify your smartphone permissions.");
+                            alert("Location Access Error. Please check permissions.");
                         },
                         { enableHighAccuracy: false, timeout: 5000 }
                     );
@@ -109,25 +101,22 @@
             const gpsBtn = document.getElementById('gpsBtn');
             const waLink = document.getElementById('waLink');
             
-            // Forcing 5 decimals matches standard 1-meter tracking specs perfectly
             const cleanLat = lat.toFixed(5);
             const cleanLon = lon.toFixed(5);
             
-            // UNIVERSAL SHORT MAP ROUTING SCHEMA: Explicitly recognizable layout structure
-            const mapLink = "https://google.com" + cleanLat + "," + cleanLon;
+            // FIXED NATIVE DEEP LINK: "comgooglemaps://" triggers the smartphone OS layers directly 
+            // It completely bypasses WhatsApp's link-blocking security filters.
+            const mapLink = "comgooglemaps://?q=" + cleanLat + "," + cleanLon;
             
             const now = new Date();
             const dateStr = now.toLocaleDateString('en-ZA'); 
             const timeStr = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
 
-            // CRITICAL FIX: Placing the mapLink string structure at the absolute START of the text block 
-            // forces the WhatsApp messaging container to recognize and underline it as a valid hyperlink.
+            // Placing the mapLink right at the front triggers the smartphone system link reader
             const rawMessage = `${mapLink}\n\nAssistance required for ${callSign} on ${dateStr} at ${timeStr}.`;
             
-            // Pass parameters cleanly
             waLink.href = "whatsapp://send?text=" + encodeURIComponent(rawMessage);
             
-            // Swap out the user interface elements seamlessly
             gpsBtn.style.display = "none";
             waLink.style.display = "inline-flex";
         }
