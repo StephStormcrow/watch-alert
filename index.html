@@ -109,7 +109,9 @@
             const gpsBtn = document.getElementById('gpsBtn');
             const waLink = document.getElementById('waLink');
             
-            const mapLink = `https://google.com{lat},${lon}`;
+            // OPTIMIZED COORDINATE ENCODING: explicitly isolates variables for WhatsApp string parsing
+            const mapLink = "https://google.com" + lat + "," + lon;
+            
             const now = new Date();
             const dateStr = now.toLocaleDateString('en-ZA'); 
             const timeStr = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
