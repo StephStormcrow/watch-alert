@@ -26,7 +26,6 @@
             color: #ff4d4d;
             margin-bottom: 30px;
         }
-        /* Stylized link that looks and acts like a massive panic button */
         .panic-btn {
             display: inline-flex;
             align-items: center;
@@ -45,16 +44,12 @@
             text-align: center;
             line-height: 1.4;
         }
-        .panic-btn:active {
-            background-color: #9a0007;
-        }
     </style>
 </head>
 <body>
 
     <div class="container">
         <div class="callsign-display" id="memberDisplay">Patrol Active</div>
-        <!-- Single native web link element -->
         <a href="#" id="actionBtn" class="panic-btn" onclick="triggerGroupPanic(event)">⚠️<br><br>SEND<br>ASSISTANCE</a>
     </div>
 
@@ -65,50 +60,52 @@
 
         function triggerGroupPanic(event) {
             const btn = document.getElementById('actionBtn');
-            
-            // 1. Stop the link from firing until we have the GPS coordinates
             event.preventDefault(); 
 
             if (!navigator.geolocation) {
-                alert("Error: Geolocation is disabled or unsupported.");
+                alert("Error: Geolocation is unsupported.");
                 return;
             }
 
             btn.innerHTML = "🔄<br><br>LOCKING GPS...";
-            btn.style.pointerEvents = "none"; // Stop double-clicking
+            btn.style.pointerEvents = "none";
 
+            // Try to get a high-accuracy GPS lock first
             navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
-                    
-                    // Universal map link format
-                    const mapLink = `https://google.com{lat},${lon}`;
-                    
-                    const now = new Date();
-                    const dateStr = now.toLocaleDateString('en-ZA'); 
-                    const timeStr = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
-
-                    const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
-                    const textMessage = encodeURIComponent(rawMessage);
-                    
-                    // 2. Set the destination to the official text-only sharing URL
-                    btn.href = `https://wa.me{textMessage}`;
-                    
-                    // 3. Re-enable clicking and immediately force a native click event
-                    btn.style.pointerEvents = "auto";
-                    btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
-                    
-                    // This forces the browser to open the newly created link naturally
-                    btn.click(); 
+                (pos) => { sendToWhatsApp(pos.coords.latitude, pos.coords.longitude); },
+                (err) => {
+                    // FALLBACK: If GPS fails or takes too long, try cell-tower location instantly
+                    console.log("High accuracy failed, trying fallback...");
+                    navigator.geolocation.getCurrentPosition(
+                        (fallbackPos) => { sendToWhatsApp(fallbackPos.coords.latitude, fallbackPos.coords.longitude); },
+                        (fallbackErr) => {
+                            btn.style.pointerEvents = "auto";
+                            btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
+                            alert("Location Error: Please check your phone settings and ensure Location/GPS is enabled for your browser app.");
+                        },
+                        { enableHighAccuracy: false, timeout: 5000 }
+                    );
                 },
-                (error) => {
-                    btn.style.pointerEvents = "auto";
-                    btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
-                    alert("GPS Signal failed. Please ensure location services are enabled on your device.");
-                },
-                { enableHighAccuracy: true, timeout: 8000 }
+                { enableHighAccuracy: true, timeout: 4000 } // Give GPS 4 seconds before failing over
             );
+        }
+
+        function sendToWhatsApp(lat, lon) {
+            const btn = document.getElementById('actionBtn');
+            const mapLink = `https://google.com{lat},${lon}`;
+            
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-ZA'); 
+            const timeStr = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+
+            const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
+            const textMessage = encodeURIComponent(rawMessage);
+            
+            btn.href = `https://wa.me{textMessage}`;
+            btn.style.pointerEvents = "auto";
+            btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
+            
+            btn.click(); // Fire the link
         }
     </script>
 
