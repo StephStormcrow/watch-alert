@@ -13,7 +13,7 @@
             align-items: center;
             height: 100vh;
             margin: 0;
-            background-color: #1a1a1a; /* Dark theme to reduce night blindness */
+            background-color: #1a1a1a;
             color: white;
         }
         .container {
@@ -27,77 +27,106 @@
             margin-bottom: 30px;
         }
         .panic-btn {
-            background-color: #d32f2f; /* Clear Alert Red */
+            background-color: #d32f2f; /* Red initially */
             color: white;
             border: none;
-            width: 180px;
-            height: 180px;
-            font-size: 20px;
+            width: 200px;
+            height: 200px;
+            font-size: 18px;
             font-weight: bold;
             border-radius: 50%;
             cursor: pointer;
             box-shadow: 0 0 20px rgba(211, 47, 47, 0.6);
-            animation: pulse 2s infinite;
+            transition: all 0.3s ease;
         }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.7); }
-            70% { box-shadow: 0 0 0 20px rgba(211, 47, 47, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0); }
+        /* Style adjustments when ready to launch WhatsApp */
+        .panic-btn.ready {
+            background-color: #25D366 !important; /* WhatsApp Green */
+            box-shadow: 0 0 25px rgba(37, 211, 102, 0.8) !important;
+            color: white !important;
+        }
+        .panic-btn:disabled {
+            background-color: #555 !important;
+            box-shadow: none !important;
+            cursor: not-allowed;
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <!-- Displays callsign dynamically from the NFC string -->
         <div class="callsign-display" id="memberDisplay">Patrol Active</div>
-        <button class="panic-btn" onclick="sendEmergencyAlert()">⚠️<br>SEND<br>ASSISTANCE</button>
+        <!-- Unified state machine button -->
+        <button class="panic-btn" id="actionBtn" onclick="handleButtonClick()">⚠️<br><br>1. GET LOCATION</button>
     </div>
 
     <script>
-        // Extract parameter values directly out of URL string
         const urlParams = new URLSearchParams(window.location.search);
         const callSign = urlParams.get('id') || "Unknown Patrol"; 
-        
-        // Show parsed callsign on visual interface
         document.getElementById('memberDisplay').innerText = `Logged: ${callSign}`;
 
-        function sendEmergencyAlert() {
-            if (!navigator.geolocation) {
-                alert("Error: Geolocation is disabled or unsupported.");
-                return;
-            }
+        // Track internal state shifts
+        let currentStatus = "idle"; 
+        let generatedWhatsappUrl = "";
 
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
-                    const mapLink = `https://google.com{lat},${lon}`;
-                    
-                    // Fetch real-time localized Date/Time data matching SA conventions
-                    const now = new Date();
-                    const dateStr = now.toLocaleDateString('en-ZA'); // Formats as DD/MM/YYYY
-                    const timeStr = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+        function handleButtonClick() {
+            const btn = document.getElementById('actionBtn');
 
-                    // Personalised Emergency Format
-                    const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
-                    
-                    // Encode into structural URL fragments and send to WhatsApp contact router
-                    const textMessage = encodeURIComponent(rawMessage);
-                    window.open(`https://wa.me{textMessage}`, '_blank');
-                },
-                (error) => {
-                    if (error.code === error.PERMISSION_DENIED) {
-                        alert("Please allow location access to dispatch coordinates.");
-                    } else {
-                        alert("GPS signal weak. Try again.");
-                    }
-                },
-                {
-                    enableHighAccuracy: true, // Pull data from active GPS hardware rather than towers
-                    timeout: 7000
+            // STATE 1: Initial Click - Fetch the GPS variables
+            if (currentStatus === "idle") {
+                if (!navigator.geolocation) {
+                    alert("Error: Geolocation is disabled or unsupported.");
+                    return;
                 }
-            );
+
+                btn.disabled = true;
+                btn.innerHTML = "🔄<br><br>LOCKING GPS...";
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        const mapLink = `https://google.com{lat},${lon}`;
+                        
+                        const now = new Date();
+                        const dateStr = now.toLocaleDateString('en-ZA'); 
+                        const timeStr = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+
+                        const rawMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
+                        const textMessage = encodeURIComponent(rawMessage);
+                        
+                        // Save the text parameters locally
+                        generatedWhatsappUrl = `https://wa.me{textMessage}`;
+                        
+                        // Progress state immediately to Step 2
+                        currentStatus = "ready";
+                        btn.disabled = false;
+                        btn.classList.add('ready');
+                        btn.innerHTML = "💬<br><br>2. SEND TO<br>WHATSAPP";
+                    },
+                    (error) => {
+                        btn.disabled = false;
+                        btn.innerHTML = "⚠️<br><br>TRY AGAIN";
+                        if (error.code === error.PERMISSION_DENIED) {
+                            alert("Please allow location access permissions.");
+                        } else {
+                            alert("GPS link timed out.");
+                        }
+                    },
+                    { enableHighAccuracy: true, timeout: 7000 }
+                );
+            } 
+            // STATE 2: Location locked - Fire the secure link directly 
+            else if (currentStatus === "ready" && generatedWhatsappUrl !== "") {
+                window.open(generatedWhatsappUrl, '_blank');
+                
+                // Reset button state slightly delayed after app handoff 
+                setTimeout(() => {
+                    currentStatus = "idle";
+                    btn.classList.remove('ready');
+                    btn.innerHTML = "⚠️<br><br>1. GET LOCATION";
+                }, 2000);
+            }
         }
     </script>
 
