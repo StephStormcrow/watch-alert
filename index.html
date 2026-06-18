@@ -26,6 +26,7 @@
             color: #ff4d4d;
             margin-bottom: 30px;
         }
+        /* Massive, single-tap responsive button */
         .panic-btn {
             display: inline-flex;
             align-items: center;
@@ -35,7 +36,7 @@
             border: none;
             width: 210px;
             height: 210px;
-            font-size: 16px;
+            font-size: 18px;
             font-weight: bold;
             border-radius: 50%;
             cursor: pointer;
@@ -47,24 +48,14 @@
             background-color: #555 !important;
             box-shadow: none !important;
         }
-        .toast-msg {
-            display: none;
-            margin-top: 20px;
-            background-color: #333;
-            color: #25D366;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 14px;
-        }
     </style>
 </head>
 <body>
 
     <div class="container">
         <div class="callsign-display" id="memberDisplay">Patrol Active</div>
-        <button id="actionBtn" class="panic-btn" onclick="triggerPatrolPanic()">⚠️<br><br>TAP TO RUN<br>EMERGENCY ALERT</button>
-        <div id="toast" class="toast-msg">📋 LINK COPIED! OPENING WHATSAPP...</div>
+        <!-- Back to a single seamless tap experience -->
+        <button id="actionBtn" class="panic-btn" onclick="triggerAndroidAlert()">⚠️<br><br>SEND<br>ASSISTANCE</button>
     </div>
 
     <script>
@@ -72,7 +63,7 @@
         const callSign = urlParams.get('id') || "Unknown Patrol"; 
         document.getElementById('memberDisplay').innerText = `Logged: ${callSign}`;
 
-        function triggerPatrolPanic() {
+        function triggerAndroidAlert() {
             const btn = document.getElementById('actionBtn');
 
             if (!navigator.geolocation) {
@@ -84,14 +75,15 @@
             btn.innerHTML = "🔄<br><br>LOCKING GPS...";
 
             navigator.geolocation.getCurrentPosition(
-                (pos) => { copyAndRedirect(pos.coords.latitude, pos.coords.longitude); },
+                (pos) => { handleHandoff(pos.coords.latitude, pos.coords.longitude); },
                 (err) => {
+                    // Cell-tower backup location check running within 4 seconds if satellite sync struggles
                     navigator.geolocation.getCurrentPosition(
-                        (fallbackPos) => { copyAndRedirect(fallbackPos.coords.latitude, fallbackPos.coords.longitude); },
+                        (fallbackPos) => { handleHandoff(fallbackPos.coords.latitude, fallbackPos.coords.longitude); },
                         (fallbackErr) => {
                             btn.disabled = false;
-                            btn.innerHTML = "⚠️<br><br>TAP TO RUN<br>EMERGENCY ALERT";
-                            alert("Location Error: Please ensure browser app location tracking permissions are allowed.");
+                            btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
+                            alert("GPS Fail: Ensure browser location permissions are enabled.");
                         },
                         { enableHighAccuracy: false, timeout: 4000 }
                     );
@@ -100,47 +92,43 @@
             );
         }
 
-        function copyAndRedirect(lat, lon) {
+        function handleHandoff(lat, lon) {
             const btn = document.getElementById('actionBtn');
-            const toast = document.getElementById('toast');
             
+            // Decimal formatting yields ~1 meter precision and keeps text clean
             const cleanLat = lat.toFixed(5);
             const cleanLon = lon.toFixed(5);
             
-            // This maps out standard clean query logic that WhatsApp loves to link
+            // Standard query-less template format that Android systems recognize natively
             const mapLink = "https://google.com" + cleanLat + "," + cleanLon;
             
             const now = new Date();
             const dateStr = now.toLocaleDateString('en-ZA'); 
             const timeStr = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
 
-            const structuralMessage = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}. Last known location: ${mapLink}`;
+            // Using explicit line break operators groups the text elements cleanly
+            const structuralText = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}.\n\nLast known location:\n${mapLink}`;
             
-            // NATIVE MEMORY INJECTION: Copies text directly into the phone's internal clipboard
-            // This safely bypasses browser script limitations
-            const tempInput = document.createElement("textarea");
-            tempInput.value = structuralMessage;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            tempInput.setSelectionRange(0, 99999); // Safe verification check for mobile architectures
-            document.execCommand("copy");
-            document.body.removeChild(tempInput);
-
-            // Trigger visual feedback notice
-            toast.style.display = "block";
-            btn.innerHTML = "✅<br><br>READY TO PASTE";
-
-            // Fire native platform deep-link to trigger choice directory array directly
-            setTimeout(() => {
-                window.location.href = "whatsapp://";
-            }, 800);
-
-            // Re-set system button status indicators
-            setTimeout(() => {
+            // ⚠️ THE ANDROID FIX: Triggers the phone's native Share Intent overlay.
+            // This stops web browser routing loops from crashing.
+            if (navigator.share) {
+                navigator.share({
+                    text: structuralText
+                })
+                .then(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
+                })
+                .catch((err) => {
+                    btn.disabled = false;
+                    btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
+                });
+            } else {
+                // Fallback option using standard web routing if opened outside a mobile environment
+                window.location.replace("https://wa.me/?text=" + encodeURIComponent(structuralText));
                 btn.disabled = false;
-                toast.style.display = "none";
-                btn.innerHTML = "⚠️<br><br>TAP TO RUN<br>EMERGENCY ALERT";
-            }, 4000);
+                btn.innerHTML = "⚠️<br><br>SEND<br>ASSISTANCE";
+            }
         }
     </script>
 
