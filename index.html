@@ -1,139 +1,143 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emergency Patrol Alert</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #1a1a1a;
-            color: white;
-        }
-        .container {
-            text-align: center;
-            padding: 20px;
-        }
-        .callsign-display {
-            font-size: 24px;
-            font-weight: bold;
-            color: #ff4d4d;
-            margin-bottom: 30px;
-        }
-        /* Step 1 Button Style */
-        .gps-btn {
-            background-color: #d32f2f;
-            color: white;
-            border: none;
-            width: 220px;
-            height: 220px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 0 20px rgba(211, 47, 47, 0.6);
-            line-height: 1.4;
-        }
-        /* Step 2 Link Style - Massive WhatsApp Green Button */
-        .whatsapp-link {
-            display: none; /* Hidden until clipboard is safely loaded */
-            align-items: center;
-            justify-content: center;
-            background-color: #25D366;
-            color: white;
-            text-decoration: none;
-            width: 220px;
-            height: 220px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 50%;
-            box-shadow: 0 0 25px rgba(37, 211, 102, 0.8);
-            text-align: center;
-            line-height: 1.4;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emergency Patrol Alert</title>
+<style>
+body{font-family:Arial,sans-serif;background:#1a1a1a;color:white;margin:0;display:flex;justify-content:center;align-items:center;height:100vh}
+.container{text-align:center}
+.callsign-display{font-size:24px;color:#ff4d4d;margin-bottom:35px}
+.alert-btn{background:#d32f2f;color:white;border:none;width:240px;height:240px;border-radius:50%;font-size:22px;font-weight:bold}
+.alert-btn.ready{background:#25D366}
+</style>
 </head>
 <body>
+<div class="container">
+<div id="memberDisplay" class="callsign-display">Loading...</div>
 
-    <div class="container">
-        <div class="callsign-display" id="memberDisplay">Patrol Active</div>
-        
-        <!-- STEP 1 BUTTON -->
-        <button id="gpsBtn" class="gps-btn" onclick="captureAndCopyLocation()">⚠️<br><br>1. LOCK GPS &<br>COPY ALERT</button>
-        
-        <!-- STEP 2 LINK -->
-        <a id="waLink" class="whatsapp-link" target="_blank" href="https://wa.me">💬<br><br>2. CHOOSE<br>WATCH GROUP<br>(THEN PASTE)</a>
-    </div>
+<button id="gpsBtn" class="alert-btn" onclick="sendEmergency()">
+⚠️
+<br><br>
+SEND
+<br>
+EMERGENCY
+<br>
+ALERT
+</button>
 
-    <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const callSign = urlParams.get('id') || "Unknown Patrol"; 
-        document.getElementById('memberDisplay').innerText = `Logged: ${callSign}`;
+</div>
 
-        function captureAndCopyLocation() {
-            const gpsBtn = document.getElementById('gpsBtn');
+<script>
 
-            if (!navigator.geolocation) {
-                alert("Error: Geolocation is unsupported.");
-                return;
-            }
+const params=new URLSearchParams(window.location.search);
 
-            gpsBtn.disabled = true;
-            gpsBtn.innerHTML = "🔄<br><br>LOCKING GPS...";
+const callSign=params.get("id")||"Unknown Patrol";
 
-            navigator.geolocation.getCurrentPosition(
-                (pos) => { buildAndCopyString(pos.coords.latitude, pos.coords.longitude); },
-                (err) => {
-                    // Cellular fallback loop
-                    navigator.geolocation.getCurrentPosition(
-                        (fallbackPos) => { buildAndCopyString(fallbackPos.coords.latitude, fallbackPos.coords.longitude); },
-                        (fallbackErr) => {
-                            gpsBtn.disabled = false;
-                            gpsBtn.innerHTML = "⚠️<br><br>1. LOCK GPS &<br>COPY ALERT";
-                            alert("GPS Fail: Ensure browser app location tracking permissions are allowed.");
-                        },
-                        { enableHighAccuracy: false, timeout: 4000 }
-                    );
-                },
-                { enableHighAccuracy: true, timeout: 4000 }
-            );
-        }
+document.getElementById("memberDisplay").innerText=
+`Logged: ${callSign}`;
 
-        function buildAndCopyString(lat, lon) {
-            const gpsBtn = document.getElementById('gpsBtn');
-            const waLink = document.getElementById('waLink');
-            
-            const cleanLat = lat.toFixed(5);
-            const cleanLon = lon.toFixed(5);
-            
-            // Clean standard link structure that opens cleanly inside Google Maps app
-            const mapLink = "https://google.com" + cleanLat + "," + cleanLon;
-            
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('en-ZA'); 
-            const timeStr = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+function sendEmergency(){
 
-            const alertTextPayload = `Assistance required for ${callSign} on ${dateStr} at ${timeStr}.\n\nLast known location:\n${mapLink}`;
-            
-            // HARDWARE LEVEL COPY: Manually forces the text block into Android's clipboard storage
-            const hiddenTextarea = document.createElement("textarea");
-            hiddenTextarea.value = alertTextPayload;
-            document.body.appendChild(hiddenTextarea);
-            hiddenTextarea.select();
-            document.execCommand("copy"); // Executed instantly to bypass Android sandboxing limits
-            document.body.removeChild(hiddenTextarea);
+const btn=document.getElementById("gpsBtn");
 
-            // Interface step transition
-            gpsBtn.style.display = "none";
-            waLink.style.display = "inline-flex";
-        }
-    </script>
+btn.disabled=true;
 
+btn.innerHTML=
+"📍<br><br>LOCKING<br>GPS";
+
+navigator.geolocation.getCurrentPosition(
+
+(position)=>{
+
+openWhatsApp(
+position.coords.latitude,
+position.coords.longitude
+);
+
+},
+
+(error)=>{
+
+alert("Unable to get location");
+
+resetButton();
+
+},
+
+{
+enableHighAccuracy:true,
+timeout:8000
+}
+
+);
+
+}
+
+async function openWhatsApp(lat,lon){
+
+const btn=document.getElementById("gpsBtn");
+
+btn.classList.add("ready");
+
+btn.innerHTML=
+"✅<br><br>OPENING<br>WHATSAPP";
+
+const mapLink=
+`https://maps.google.com/?q=${lat.toFixed(5)},${lon.toFixed(5)}`;
+
+const now=new Date();
+
+const message=
+`🚨 Assistance required
+
+Call Sign: ${callSign}
+
+Date:
+${now.toLocaleDateString("en-ZA")}
+
+Time:
+${now.toLocaleTimeString("en-ZA",{hour:"2-digit",minute:"2-digit"})}
+
+Location:
+${mapLink}`;
+
+try{
+
+if(navigator.share){
+
+await navigator.share({
+text:message
+});
+
+}else{
+
+window.location.href=
+`https://wa.me/?text=${encodeURIComponent(message)}`;
+
+}
+
+}catch{
+
+resetButton();
+
+}
+
+}
+
+function resetButton(){
+
+const btn=document.getElementById("gpsBtn");
+
+btn.disabled=false;
+
+btn.classList.remove("ready");
+
+btn.innerHTML=
+`⚠️<br><br>SEND<br>EMERGENCY<br>ALERT`;
+
+}
+
+</script>
 </body>
 </html>
